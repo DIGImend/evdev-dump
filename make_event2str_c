@@ -18,6 +18,8 @@
 # along with digimend-diag; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+set -e
+
 UNKNOWN_STR="<UNKNOWN>"
 IGNORE_TYPE_REGEXP="(VERSION|MAX)"
 IGNORE_CODE_REGEXP="MAX"
@@ -66,7 +68,7 @@ CUT
         egrep "^#define ${type_synonym_regexp}_" |
         cut -d' ' -f2- |
         egrep -v "^${type_synonym_regexp}_$IGNORE_CODE_REGEXP" |
-        awk --non-decimal-data '{printf "%s\t%d\n", $1, $2}' |
+        gawk --non-decimal-data '{printf "%s\t%d\n", $1, $2}' |
         sort --key=2 --numeric-sort --uniq |    # remove duplicated code entries
         cut -f1 |
         while read code; do
@@ -113,7 +115,7 @@ CUT
         egrep '^#define EV_' |
         cut -d_ -f2- |
         egrep -v "^$IGNORE_TYPE_REGEXP" |
-        awk --non-decimal-data '{printf "%s\t%d\n", $1, $2}' |
+        gawk --non-decimal-data '{printf "%s\t%d\n", $1, $2}' |
         sort --key=2 --numeric-sort --uniq |    # remove duplicated code entries
         cut -f1 |
         while read type; do
