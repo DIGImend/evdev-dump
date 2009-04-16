@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with digimend-diag; if not, write to the Free Software
+# along with evdev-dump; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 # Process this file with autoconf to produce a configure script.
@@ -28,12 +28,19 @@ AC_CONFIG_HEADER([config.h])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
+AC_CHECK_PROG(BASH, bash, `which bash`, /bin/bash)
 
 # Checks for libraries.
 
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([fcntl.h stdlib.h unistd.h linux/input.h])
+
+# Check for input files.
+AC_CHECK_FILE([/usr/include/linux/input.h],
+              [INPUT_H_PATH="/usr/include/linux/input.h"], \
+              [AC_MSG_ERROR([We need /usr/include/linux/input.h!])])
+AC_SUBST([INPUT_H_PATH])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

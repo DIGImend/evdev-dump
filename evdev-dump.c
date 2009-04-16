@@ -118,7 +118,7 @@ read_input(input *i, const input_event **pe)
 }
 
 /* Include generated event2str function. */
-#include "event2str.c"
+#include "event2str.inc"
 
 int
 main(int argc, const char **argv)
