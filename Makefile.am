@@ -21,6 +21,7 @@ evdev_dump_SOURCES = evdev-dump.c
 nodist_evdev_dump_SOURCES = event2str.inc
 BUILT_SOURCES = event2str.inc
 CLEANFILES = event2str.inc
+EXTRA_DIST = gen_event2str_inc.sh
 
 event2str.inc: gen_event2str_inc.sh @INPUT_H_PATH@
 	@BASH@ $^ > $@
