@@ -21,7 +21,7 @@
 AC_PREREQ(2.61)
 AC_INIT(evdev-dump, 0.2)
 AC_CONFIG_AUX_DIR([auxdir])
-AM_INIT_AUTOMAKE([1.10.1 -Wall foreign])
+AM_INIT_AUTOMAKE([1.9 -Wall foreign])
 AC_CONFIG_SRCDIR([evdev-dump.c])
 AC_CONFIG_HEADER([config.h])
 
