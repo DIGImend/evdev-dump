@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2010 Nikolai Kondrashov
 #
-# This file is part of hidrd-dump.
+# This file is part of evdev-dump.
 #
 # Hidrd-dump is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with hidrd-dump; if not, write to the Free Software
+# along with evdev-dump; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 # Process this file with autoconf to produce a configure script.
