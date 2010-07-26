@@ -231,8 +231,7 @@ run(char **path_list, size_t num)
             else
             {
                 if (rc != sizeof(e))
-                    ERROR_CLEANUP("short read from \"%s\"",
-                                  path_list[i]);
+                    ERROR_CLEANUP("Short read from \"%s\"", path_list[i]);
                 if (!paused)
                 {
                     dump(path_list[i], &e);
