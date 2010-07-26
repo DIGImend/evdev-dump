@@ -15,13 +15,12 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-sbin_PROGRAMS = evdev-dump
+bin_PROGRAMS = evdev-dump
 
 evdev_dump_SOURCES = evdev-dump.c
-nodist_evdev_dump_SOURCES = event2str.inc
 BUILT_SOURCES = event2str.inc
 CLEANFILES = event2str.inc
-EXTRA_DIST = gen_event2str_inc.sh
+dist_noinst_DATA = event2str.inc.sh
 
-event2str.inc: gen_event2str_inc.sh @INPUT_H_PATH@
+event2str.inc: event2str.inc.sh @INPUT_H_PATH@
 	@BASH@ $^ > $@

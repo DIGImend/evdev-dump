@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2005-2008 Nikolai Kondrashov
+# Copyright (c) 2005-2010 Nikolai Kondrashov
 #
 # This file is part of evdev-dump.
 #
@@ -79,7 +79,7 @@ CUT
     
     cat <<CUT
                 default:
-                    *pcode_str = unknown_str;
+                    *pcode_str = NULL;
                     break;
             } /* switch (e->code) */
             break; /* EV_$type */
@@ -95,12 +95,10 @@ function print_event2str() {
 
     cat <<CUT
 static void
-event2str(const input_event    *e,
-          const char          **ptype_str,
-          const char          **pcode_str)
+event2str(const struct input_event     *e,
+          const char                  **ptype_str,
+          const char                  **pcode_str)
 {
-    static const char  *unknown_str = "$UNKNOWN_STR";
-
 #define MAP(_name) \\
     case _name:                 \\
         *pcode_str = #_name;    \\
@@ -124,8 +122,8 @@ CUT
 
     cat <<CUT
         default:
-            *ptype_str = unknown_str;
-            *pcode_str = unknown_str;
+            *ptype_str = NULL;
+            *pcode_str = NULL;
             break;
 
     } /* switch (e->type) */
@@ -139,6 +137,7 @@ CUT
 
 cat <<CUT
 /*
+ * vim:nomodifiable
  * DO NOT EDIT
  * This file is generated automatically by ${0##*/}.
  */

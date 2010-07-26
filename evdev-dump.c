@@ -1,5 +1,7 @@
-/*
- * Copyright (c) 2005-2009 Nikolai Kondrashov
+/** @file
+ * @brief evdev-dump - entry point
+ *
+ * Copyright (C) 2005-2010 Nikolai Kondrashov
  *
  * This file is part of evdev-dump.
  *
@@ -16,154 +18,330 @@
  * You should have received a copy of the GNU General Public License
  * along with evdev-dump; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Nikolai Kondrashov <spbnick@gmail.com>
+ *
+ * @(#) $Id: hid-dump.c 494 2010-07-25 11:23:29Z spb_nick $
  */
 
-#define _GNU_SOURCE
-
+#include <stdbool.h>
+#include <assert.h>
 #include <errno.h>
 #include <error.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <linux/input.h>
 
-#include "config.h"
+#define ERROR(_fmt, _args...) \
+    fprintf(stderr, _fmt "\n", ##_args)
 
+#define FAILURE(_fmt, _args...) \
+    fprintf(stderr, "Failed to " _fmt "\n", ##_args)
 
-/* Taken from linux/time.h */
-#define NSEC_PER_SEC	1000000000L
-#define NSEC_PER_USEC	1000L
-static inline long long
-timeval_to_ns(const struct timeval *tv)
+#define ERRNO_FAILURE(_fmt, _args...) \
+    FAILURE(_fmt ": %s", ##_args, strerror(errno))
+
+#define ERROR_CLEANUP(_fmt, _args...) \
+    do {                                \
+        ERROR(_fmt, ##_args);           \
+        goto cleanup;                   \
+    } while (0)
+
+#define FAILURE_CLEANUP(_fmt, _args...) \
+    do {                                \
+        FAILURE(_fmt, ##_args);         \
+        goto cleanup;                   \
+    } while (0)
+
+#define ERRNO_FAILURE_CLEANUP(_fmt, _args...) \
+    do {                                        \
+        ERRNO_FAILURE(_fmt, ##_args);           \
+        goto cleanup;                           \
+    } while (0)
+
+static void
+usage(FILE *stream)
 {
-	return ((long long) tv->tv_sec * NSEC_PER_SEC) +
-		tv->tv_usec * NSEC_PER_USEC;
+    fprintf(
+        stream,
+"Usage: %s [OPTION] <device> [device]...\n"
+"Dump event device(s).\n"
+"\n"
+"Arguments:\n"
+"  device           event device path, e.g. /dev/input/event1\n"
+"\n"
+"Options:\n"
+"  -h, --help       this help message\n"
+"  -p, --paused     start with the output paused\n"
+"  -f, --feedback   enable dumping feedback: for every transfer dumped\n"
+"                   a dot is printed to stderr\n"
+"\n"
+"Signals:\n"
+"  USR1/USR2        pause/resume the output\n"
+"\n",
+        program_invocation_short_name);
 }
 
 
-/** Maximum number of input events read in one read call. */
-#define MAX_EVENTS 64
+/**< "output paused" flag - non-zero if paused */
+static volatile sig_atomic_t paused = 0;
 
-typedef struct input_event input_event;
-
-typedef struct input {
-    int             fd;                 /**< File descriptor */
-    input_event     buf[MAX_EVENTS];    /**< Event buffer */
-    size_t          num;                /**< Number of events in
-                                             the buffer */
-    input_event    *e;                  /**< Next event pointer */
-} input;
-
-
-/** Open an input device. */
-input *
-open_input(const char *filename)
+static void
+pause_sighandler(int signum)
 {
-    int     fd;
-    input  *i;
+    (void)signum;
+    paused = 1;
+}
 
-    if ((fd = open(filename, O_RDONLY)) < 0)
-        return NULL;
-
-    i = malloc(sizeof(*i));
-    if (i == NULL)
-        return NULL;
-
-    i->fd   = fd;
-    i->num  = 0;
-    i->e    = i->buf;
-
-    return i;
+static void
+resume_sighandler(int signum)
+{
+    (void)signum;
+    paused = 0;
 }
 
 
-/** Close an input device. */
-void
-close_input(input *i)
-{
-    close(i->fd);
-    free(i);
-}
+/**< "dump feedback" flag - non-zero if feedback is enabled */
+static volatile sig_atomic_t feedback = 0;
 
-
-/** Read event from an input device. */
-int
-read_input(input *i, const input_event **pe)
-{
-    int rc;
-
-    i->e++;
-
-    if ((size_t)(i->e - i->buf) >= i->num)
-    {
-        rc = read(i->fd, i->buf, sizeof(i->buf));
-
-        if (rc < 0)
-            return -1;
-        if (rc == 0)
-            return 0;
-        if ((rc % sizeof(input_event)) != 0)
-            return -1;
-
-        i->num = rc / sizeof(input_event);
-
-        i->e = i->buf;
-    }
-
-    if (pe != NULL)
-        *pe = i->e;
-
-    return 1;
-}
 
 /* Include generated event2str function. */
 #include "event2str.inc"
 
-int
-main(int argc, const char **argv)
+
+static void
+dump(const char *path, const struct input_event *e)
 {
-    const char         *filename;
-    input              *i;
-    const input_event  *e;
-    const char         *type_str;
-    const char         *code_str;
+    const char *type_str;
+    const char *code_str;
+    char        type_buf[7];
+    char        code_buf[7];
+
+    event2str(e, &type_str, &code_str);
+
+    if (type_str == NULL)
+    {
+        snprintf(type_buf, sizeof(type_buf), "0x%.2hX", e->type);
+        type_str = type_buf;
+    }
+
+    if (code_str == NULL)
+    {
+        snprintf(code_buf, sizeof(code_buf), "0x%.4hX", e->code);
+        code_str = code_buf;
+    }
+
+    printf("%-18s %llu.%.6u %s %s 0x%.8X\n",
+           path,
+           (long long unsigned int)e->time.tv_sec,
+           (unsigned int)e->time.tv_usec,
+           type_str, code_str,
+           e->value);
+}
+
+
+static int
+run(char **path_list, size_t num)
+{
+    static const char   dot             = '.';
+    int                 result          = 1;
+    int                 fd_list[num];
+    int                 max_fd;
+    int                 fd;
+    size_t              i;
+    fd_set              read_set;
     int                 rc;
+    struct input_event  e;
 
-    program_invocation_name = program_invocation_short_name;
+    assert(path_list != NULL);
+    assert(num > 0);
+    assert(num < FD_SETSIZE);
 
-    if (argc != 2)
+    /* Initialize the FD list */
+    for (i = 0; i < num; i++)
+        fd_list[i] = -1;
+
+    /* Open the devices */
+    for (i = 0; i < num; i++)
     {
-        fprintf(stderr,
-                "Usage: %s <event device>\n",
-                program_invocation_short_name);
-        exit(1);
+        fd = open(path_list[i], O_RDONLY);
+        if (fd < 0 || fd >= FD_SETSIZE)
+        {
+            if (fd >= FD_SETSIZE)
+            {
+                close(fd);
+                errno = EMFILE;
+            }
+            ERRNO_FAILURE_CLEANUP("open \"%s\"", path_list[i]);
+        }
+        fd_list[i] = fd;
     }
 
-    filename = argv[1];
-
-    i = open_input(filename);
-    if (i == NULL)
-        error(1, errno, "Failed to open input device %s", filename);
-
-    setlinebuf(stdout);
-
-    while ((rc = read_input(i, &e)) > 0)
+    /* Dump the devices */
+    while (true)
     {
-        event2str(e, &type_str, &code_str);
+        /* Fill the FD read set */
+        max_fd = -1;
+        FD_ZERO(&read_set);
+        for (i = 0; i < num; i++)
+        {
+            fd = fd_list[i];
+            if (fd >= 0)
+            {
+                FD_SET(fd, &read_set);
+                if (fd > max_fd)
+                    max_fd = fd;
+            }
+        }
 
-        fprintf(stdout,
-                "%.16llX %s(0x%.2X): %s(0x%.3X): 0x%.8X\n",
-                (unsigned long long)timeval_to_ns(&e->time),
-                type_str, e->type, code_str, e->code, e->value);
+        if (max_fd < 0)
+            break;
+
+        /* Wait for input */
+        rc = select(max_fd + 1, &read_set, NULL, NULL, NULL);
+        if (rc <= 0)
+        {
+            if (errno != EINTR)
+                ERRNO_FAILURE_CLEANUP("wait for input");
+            continue;
+        }
+
+        /* Dump ready descriptors */
+        for (i = 0; i < num; i++)
+        {
+            fd = fd_list[i];
+
+            if (!FD_ISSET(fd, &read_set))
+                continue;
+
+            rc = read(fd, &e, sizeof(e));
+            if (rc < 0)
+                ERRNO_FAILURE_CLEANUP("read \"%s\"", path_list[i]);
+            else if (rc == 0)
+            {
+                close(fd);
+                fd_list[i] = -1;
+            }
+            else
+            {
+                if (rc != sizeof(e))
+                    ERROR_CLEANUP("short read from \"%s\"",
+                                  path_list[i]);
+                if (!paused)
+                {
+                    dump(path_list[i], &e);
+                    if (feedback)
+                        write(STDERR_FILENO, &dot, sizeof(dot));
+                }
+            }
+        }
     }
 
-    if (rc < 0)
-        error(1, errno, "Failed to read input device %s", filename);
+    result = 0;
 
-    close_input(i);
+cleanup:
 
-    return 0;
+    for (i = 0; i < num; i++)
+    {
+        fd = fd_list[i];
+        if (fd >= 0)
+            close(fd);
+    }
+
+    return result;
+}
+
+
+typedef enum opt_val {
+    OPT_VAL_HELP        = 'h',
+    OPT_VAL_PAUSED      = 'p',
+    OPT_VAL_FEEDBACK    = 'f',
+} opt_val;
+
+
+int
+main(int argc, char **argv)
+{
+    static const struct option long_opt_list[] = {
+        {.val       = OPT_VAL_HELP,
+         .name      = "help",
+         .has_arg   = no_argument,
+         .flag      = NULL},
+        {.val       = OPT_VAL_PAUSED,
+         .name      = "paused",
+         .has_arg   = no_argument,
+         .flag      = NULL},
+        {.val       = OPT_VAL_FEEDBACK,
+         .name      = "feedback",
+         .has_arg   = no_argument,
+         .flag      = NULL},
+        {.val       = 0,
+         .name      = NULL,
+         .has_arg   = 0,
+         .flag      = NULL}
+    };
+
+    static const char  *short_opt_list = "hpf";
+    int                 c;
+    struct sigaction    sa;
+
+#define USAGE_ERROR(_fmt, _args...) \
+    do {                                        \
+        fprintf(stderr, _fmt "\n", ##_args);    \
+        usage(stderr);                          \
+        return 1;                               \
+    } while (0)
+
+    /*
+     * Parse command line arguments
+     */
+    while ((c = getopt_long(argc, argv,
+                            short_opt_list, long_opt_list, NULL)) >= 0)
+    {
+        switch (c)
+        {
+            case OPT_VAL_HELP:
+                usage(stdout);
+                return 0;
+                break;
+            case OPT_VAL_PAUSED:
+                paused = 1;
+                break;
+            case OPT_VAL_FEEDBACK:
+                feedback = 1;
+                break;
+            case '?':
+                usage(stderr);
+                return 1;
+                break;
+        }
+    }
+
+    /*
+     * Validate positional parameters
+     */
+    if (optind >= argc)
+        USAGE_ERROR("Not enough arguments");
+    if ((optind - argc) >= FD_SETSIZE)
+        USAGE_ERROR("Too many arguments");
+
+    /*
+     * Setup SIGUSR1/SIGUSR2 to pause/resume the output
+     */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sa.sa_handler = pause_sighandler;
+    sigaction(SIGUSR1, &sa, NULL);
+    sa.sa_handler = resume_sighandler;
+    sigaction(SIGUSR2, &sa, NULL);
+
+    return run(argv + optind, argc - optind);
 }
 
 
