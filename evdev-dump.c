@@ -21,7 +21,7 @@
  *
  * @author Nikolai Kondrashov <spbnick@gmail.com>
  *
- * @(#) $Id: hid-dump.c 494 2010-07-25 11:23:29Z spb_nick $
+ * @(#) $Id$
  */
 
 #include <stdbool.h>
@@ -79,7 +79,7 @@ usage(FILE *stream)
 "Options:\n"
 "  -h, --help       this help message\n"
 "  -p, --paused     start with the output paused\n"
-"  -f, --feedback   enable dumping feedback: for every transfer dumped\n"
+"  -f, --feedback   enable feedback: for every event dumped\n"
 "                   a dot is printed to stderr\n"
 "\n"
 "Signals:\n"
@@ -173,16 +173,13 @@ run(char **path_list, size_t num)
     for (i = 0; i < num; i++)
     {
         fd = open(path_list[i], O_RDONLY);
+        fd_list[i] = fd;
         if (fd < 0 || fd >= FD_SETSIZE)
         {
             if (fd >= FD_SETSIZE)
-            {
-                close(fd);
                 errno = EMFILE;
-            }
             ERRNO_FAILURE_CLEANUP("open \"%s\"", path_list[i]);
         }
-        fd_list[i] = fd;
     }
 
     /* Dump the devices */
@@ -202,6 +199,7 @@ run(char **path_list, size_t num)
             }
         }
 
+        /* If there were no valid FDs */
         if (max_fd < 0)
             break;
 
