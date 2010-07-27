@@ -15,6 +15,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+dist_noinst_SCRIPTS = bootstrap
+
 bin_PROGRAMS = evdev-dump
 
 evdev_dump_SOURCES = evdev-dump.c
