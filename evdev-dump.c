@@ -137,12 +137,14 @@ dump(const char *path, const struct input_event *e)
         code_str = code_buf;
     }
 
-    printf("%-18s %llu.%.6u %s %s 0x%.8X\n",
-           path,
-           (long long unsigned int)e->time.tv_sec,
-           (unsigned int)e->time.tv_usec,
-           type_str, code_str,
-           e->value);
+    fprintf(stdout,
+            "%-18s %llu.%.6u %s %s 0x%.8X\n",
+            path,
+            (long long unsigned int)e->time.tv_sec,
+            (unsigned int)e->time.tv_usec,
+            type_str, code_str,
+            e->value);
+    fflush(stdout);
 }
 
 
@@ -339,6 +341,9 @@ main(int argc, char **argv)
     sigaction(SIGUSR1, &sa, NULL);
     sa.sa_handler = resume_sighandler;
     sigaction(SIGUSR2, &sa, NULL);
+
+    /* Make stdout buffered - we will flush it explicitly */
+    setbuf(stdout, NULL);
 
     return run(argv + optind, argc - optind);
 }
