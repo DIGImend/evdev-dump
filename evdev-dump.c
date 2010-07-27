@@ -70,7 +70,7 @@ usage(FILE *stream)
 {
     fprintf(
         stream,
-"Usage: %s [OPTION] <device> [device]...\n"
+"Usage: %s [OPTION]... <device> [device]...\n"
 "Dump event device(s).\n"
 "\n"
 "Arguments:\n"
