@@ -81,6 +81,7 @@ usage(FILE *stream)
 "  -p, --paused     start with the output paused\n"
 "  -f, --feedback   enable feedback: for every event dumped\n"
 "                   a dot is printed to stderr\n"
+"  -g, --grab       grab the input device with ioctl\n"
 "\n"
 "Signals:\n"
 "  USR1/USR2        pause/resume the output\n"
@@ -110,6 +111,7 @@ resume_sighandler(int signum)
 /**< "dump feedback" flag - non-zero if feedback is enabled */
 static volatile sig_atomic_t feedback = 0;
 
+static volatile sig_atomic_t grab = 0;
 
 /* Include generated event2str function. */
 #include "event2str.inc"
@@ -179,6 +181,9 @@ run(char **path_list, size_t num)
             if (fd >= FD_SETSIZE)
                 errno = EMFILE;
             ERRNO_FAILURE_CLEANUP("open \"%s\"", path_list[i]);
+        }
+        if (grab) {
+             ioctl(fd, EVIOCGRAB, grab);
         }
     }
 
@@ -261,6 +266,7 @@ typedef enum opt_val {
     OPT_VAL_HELP        = 'h',
     OPT_VAL_PAUSED      = 'p',
     OPT_VAL_FEEDBACK    = 'f',
+    OPT_VAL_GRAB        = 'g',
 } opt_val;
 
 
@@ -280,13 +286,17 @@ main(int argc, char **argv)
          .name      = "feedback",
          .has_arg   = no_argument,
          .flag      = NULL},
+        {.val       = OPT_VAL_GRAB,
+         .name      = "grab",
+         .has_arg   = no_argument,
+         .flag      = NULL},
         {.val       = 0,
          .name      = NULL,
          .has_arg   = 0,
          .flag      = NULL}
     };
 
-    static const char  *short_opt_list = "hpf";
+    static const char  *short_opt_list = "hpfg";
     int                 c;
     struct sigaction    sa;
 
@@ -314,6 +324,9 @@ main(int argc, char **argv)
                 break;
             case OPT_VAL_FEEDBACK:
                 feedback = 1;
+                break;
+            case OPT_VAL_GRAB:
+                grab = 1;
                 break;
             case '?':
                 usage(stderr);
