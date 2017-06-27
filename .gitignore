@@ -11,3 +11,4 @@
 /event2str.inc
 /evdev-dump
 /Makefile
+*.o
