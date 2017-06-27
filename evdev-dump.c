@@ -81,7 +81,7 @@ usage(FILE *stream)
 "  -p, --paused     start with the output paused\n"
 "  -f, --feedback   enable feedback: for every event dumped\n"
 "                   a dot is printed to stderr\n"
-"  -g, --grab       grab the input device with ioctl\n"
+"  -g, --grab       grab the input device(s) with ioctl\n"
 "\n"
 "Signals:\n"
 "  USR1/USR2        pause/resume the output\n"
