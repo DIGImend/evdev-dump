@@ -25,6 +25,7 @@ Here is the output of evdev-dump --help:
       -p, --paused     start with the output paused
       -f, --feedback   enable feedback: for every event dumped
                        a dot is printed to stderr
+      -g, --grab       grab the input device(s) with ioctl
 
     Signals:
       USR1/USR2        pause/resume the output
