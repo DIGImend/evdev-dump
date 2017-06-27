@@ -61,9 +61,9 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([linux/input.h])
 
 # Check for input files.
-AC_CHECK_FILE([/usr/include/linux/input.h],
-              [INPUT_H_PATH="/usr/include/linux/input.h"], \
-              [AC_MSG_ERROR([/usr/include/linux/input.h not found])])
+AC_CHECK_FILE([/usr/include/linux/input-event-codes.h],
+              [INPUT_H_PATH="/usr/include/linux/input-event-codes.h"], \
+              [AC_MSG_ERROR([/usr/include/linux/input-event-codes.h not found])])
 AC_SUBST([INPUT_H_PATH])
 
 AC_CONFIG_FILES([Makefile])
